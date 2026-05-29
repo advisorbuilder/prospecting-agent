@@ -354,7 +354,7 @@ def score_with_claude(prospects):
 
     # Send in batches of 30 to stay within token limits
     scored_all = []
-    batch_size = 30
+    batch_size = 15
     for i in range(0, len(prospects), batch_size):
         batch = prospects[i:i+batch_size]
         batch_text = "\n\n".join([
@@ -423,7 +423,7 @@ URLS: {json.dumps([p.get('url','') for p in batch])}"""
             }
         )
         try:
-            with urllib.request.urlopen(req, timeout=45) as r:
+            with urllib.request.urlopen(req, timeout=120) as r:
                 data = json.loads(r.read())
             raw_text = data["content"][0]["text"].strip()
             if "```" in raw_text:
