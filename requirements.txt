@@ -1,0 +1,2 @@
+# No external packages needed — uses Python standard library only
+# urllib, json, smtplib, email are all built-in
