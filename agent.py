@@ -268,13 +268,15 @@ def fetch_sec_formd():
     seen    = set()
     # Query once per state with state param — not repeated identical URLs
     for state_code in ["TX", "NY", "IL", "CA", "FL"]:
-        url = (
-            f"https://efts.sec.gov/LATEST/search-index"
-            f"?q=%22private+equity%22+OR+%22hedge+fund%22"
-            f"&dateRange=custom&startdt={CUTOFF.strftime('%Y-%m-%d')}"
-            f"&enddt={TODAY.strftime('%Y-%m-%d')}"
-            f"&forms=D&entity={urllib.parse.quote(state_code)}"
-        )
+        # Use simpler query per state - OR queries cause 500 errors on EDGAR
+        for term in ["private equity", "hedge fund", "capital management", "investment fund"]:
+            url = (
+                f"https://efts.sec.gov/LATEST/search-index"
+                f"?q={urllib.parse.quote(term)}"
+                f"&dateRange=custom&startdt={CUTOFF.strftime('%Y-%m-%d')}"
+                f"&enddt={TODAY.strftime('%Y-%m-%d')}"
+                f"&forms=D"
+            )
         raw = fetch(url)
         if not raw:
             time.sleep(0.3)
@@ -421,54 +423,65 @@ def fetch_990_nationwide():
     Not just Texas. These people are already thinking about money intentionally.
     """
     log("Fetching IRS 990 nationwide philanthropy signals...", "📋")
+    # Broader search terms, lower asset threshold, nationwide
     searches = [
-        "family foundation",     "private foundation",
-        "Texas foundation",      "Austin foundation",
-        "Houston foundation",    "Dallas foundation",
-        "New York foundation",   "Chicago foundation",
-        "energy foundation",     "technology foundation",
+        ("family foundation", None),
+        ("private foundation", None),
+        ("charitable foundation", None),
+        ("Texas foundation", "TX"),
+        ("Austin philanthropic", "TX"),
+        ("Houston charitable", "TX"),
+        ("Dallas foundation", "TX"),
+        ("New York family foundation", "NY"),
+        ("Chicago foundation", "IL"),
+        ("energy family foundation", None),
+        ("technology foundation", None),
+        ("medical foundation", None),
     ]
     results = []
     seen    = set()
-    for term in searches:
-        url = (
-            "https://projects.propublica.org/nonprofits/api/v2/search.json"
-            f"?q={urllib.parse.quote(term)}"
-        )
-        raw = fetch(url)
-        if not raw:
-            time.sleep(0.3)
-            continue
-        try:
-            orgs = json.loads(raw).get("organizations", [])
-            for org in orgs[:5]:
-                revenue = org.get("totrevenue", 0) or 0
-                assets  = org.get("totassests", 0) or 0
-                # Target donors in $50K-$5M revenue range — not too small, not named-gift large
-                if revenue < 50_000 or revenue > 5_000_000:
-                    continue
-                name = clean(org.get("name", "Unknown"))
-                key  = re.sub(r"\W+", "", name.lower())[:40]
-                if key in seen:
-                    continue
-                seen.add(key)
-                city  = org.get("city", "")
-                state = org.get("state", "")
-                tx    = state == "TX" or is_texas(name + city)
-                results.append({
-                    "source": "IRS 990 / ProPublica",
-                    "type":   "philanthropy",
-                    "entity": name,
-                    "date":   str(org.get("tax_prd_yr", "")),
-                    "detail": (f"{name} — {city}, {state}. "
-                               f"Annual revenue ${revenue:,}. Assets ${assets:,}. "
-                               f"Active donor — philanthropic mindset signals wealth and intentionality."),
-                    "url":    f"https://projects.propublica.org/nonprofits/organizations/{org.get('ein','')}",
-                    "texas":  tx,
-                })
-        except Exception as e:
-            log(f"990 parse error ({term}): {e}", "⚠")
-        time.sleep(0.3)
+    for term, state_filter in searches:
+        base_url = f"https://projects.propublica.org/nonprofits/api/v2/search.json?q={urllib.parse.quote(term)}"
+        if state_filter:
+            base_url += f"&state%5Bid%5D={state_filter}"
+        # Also filter for private foundations (c_code 4) and charitable orgs (c_code 3)
+        for c_code in ["3", "4"]:
+            url = base_url + f"&c_code%5Bid%5D={c_code}"
+            raw = fetch(url)
+            if not raw:
+                time.sleep(0.3)
+                continue
+            try:
+                orgs = json.loads(raw).get("organizations", [])
+                for org in orgs[:6]:
+                    revenue = org.get("totrevenue", 0) or 0
+                    assets  = org.get("totassests", 0) or 0
+                    # Lowered threshold — $10K revenue, $100K assets minimum
+                    # Max $10M — above that they have full advisory teams
+                    if assets < 100_000 or revenue > 10_000_000:
+                        continue
+                    name = clean(org.get("name", "Unknown"))
+                    key  = re.sub(r"\W+", "", name.lower())[:40]
+                    if key in seen or not name or name == "Unknown":
+                        continue
+                    seen.add(key)
+                    city  = org.get("city", "") or ""
+                    state = org.get("state", "") or ""
+                    tx    = state == "TX" or is_texas(name + city)
+                    results.append({
+                        "source": "IRS 990 / ProPublica",
+                        "type":   "philanthropy",
+                        "entity": name,
+                        "date":   str(org.get("tax_prd_yr", "")),
+                        "detail": (f"{name} — {city}, {state}. "
+                                   f"Revenue ${revenue:,}. Assets ${assets:,}. "
+                                   f"Private foundation or charitable org — founder likely UHNW individual."),
+                        "url":    f"https://projects.propublica.org/nonprofits/organizations/{org.get('ein','')}",
+                        "texas":  tx,
+                    })
+            except Exception as e:
+                log(f"990 parse error ({term}): {e}", "⚠")
+            time.sleep(0.2)
     log(f"IRS 990 nationwide: {len(results)} philanthropic signals", "✓")
     return results
 
@@ -972,8 +985,8 @@ def send_digest(scored):
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 
-CACHE_RAW    = "/tmp/agent_raw.json"
-CACHE_SCORED = "/tmp/agent_scored.json"
+CACHE_RAW    = f"/tmp/agent_raw_{TODAY.strftime('%Y%m%d')}.json"  # date-stamped — never reuses yesterday's cache
+CACHE_SCORED = f"/tmp/agent_scored_{TODAY.strftime('%Y%m%d')}.json"  # date-stamped
 
 
 def save(path, data):
