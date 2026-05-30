@@ -24,6 +24,7 @@ ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 EMAIL_FROM        = os.environ["EMAIL_FROM"]
 EMAIL_TO          = os.environ["EMAIL_TO"]
 SENDGRID_API_KEY  = os.environ["SENDGRID_API_KEY"]
+PIPEDREAM_URL     = os.environ.get("PIPEDREAM_URL", "https://eoyk3c1oy8zcih4.m.pipedream.net")
 
 TODAY  = datetime.now(timezone.utc).replace(tzinfo=None)
 CUTOFF = TODAY - timedelta(days=90)
@@ -41,6 +42,61 @@ BIG_FINANCE = [
     "Bain Capital", "TPG", "Warburg Pincus", "Vista Equity",
     "Lone Star Funds", "Hillwood", "Hunt Companies",
 ]
+
+# ── Company universe: S&P 500 (positions 101-500) + S&P 400 MidCap ───────────
+# Top 100 S&P 500 by market cap excluded (Apple, Nvidia, Microsoft etc)
+# Updated quarterly when S&P rebalances
+TARGET_TICKERS = {
+    "AA","AAL","AAON","ABNB","ACGL","ACLX","ACM","ADP","ADSK","AEIS",
+    "AEO","AEP","AES","AFL","AGCO","AHR","AIG","AIT","AIV","AIZ",
+    "AJRD","AJG","AKAM","AL","ALB","ALKS","ALLE","ALSN","AM","AME",
+    "AMG","AMKR","AMP","ANF","AOS","APA","APD","APG","APO","APLS",
+    "APOG","ARE","ARI","ASH","AVB","AVNT","AWI","AX","AXO","AYI",
+    "AZTA","BALL","BAX","BC","BBWI","BECN","BEN","BJ","BLKB","BLDR",
+    "BMY","BPOP","BRC","BRKR","BROS","BRX","BSY","BWA","BWXT","CAG",
+    "CAH","CAR","CART","CAVA","CBOE","CBSH","CBT","CCK","CDP","CE",
+    "CELH","CFG","CFR","CG","CHD","CHE","CI","CINF","CLF","CMC",
+    "CMG","CMS","COIN","COKE","CMCSA","CPT","CRI","CRL","CRS","CSL",
+    "CSGP","CTRA","CUBE","CVS","CVNA","CW","CWT","DAN","DASH","DAR",
+    "DCI","DINO","DLB","DELL","DG","DFS","DLR","DOCN","DOV","DPZ",
+    "DRH","DT","DUK","DVA","DVN","DY","EA","EAT","EEFT","ED",
+    "EFX","EGP","EIX","ELME","EMR","ENS","EOG","EPAC","EPAM","ERJ",
+    "ES","ETR","EVRG","EXPE","EXPD","EXP","EXPI","EXEL","F","FAF",
+    "FANG","FBP","FFIN","FFIV","FE","FIVN","FIVE","FIS","FLO","FLT",
+    "FMC","FORM","FPAY","FR","FRPT","FSLR","FSS","FTV","FUL","G",
+    "GD","GEF","GKS","GL","GME","GOLF","GPC","GPK","GPN","GRA",
+    "GRBK","GXO","HAE","HAL","HAS","HBI","HBAN","HCA","HCC","HCI",
+    "HES","HGV","HIW","HL","HLF","HLNE","HOLX","HOOD","HQY","HR",
+    "HRL","HSIC","HST","HSY","HUBG","HUN","HWM","IAA","IBP","ICE",
+    "ICUI","IDCC","IFF","IESC","ILF","INVH","INCY","INSP","IPG","IPX",
+    "IRM","ITGR","ITW","IVZ","JBHT","JJSF","JCI","JKHY","JNPR","JXN",
+    "K","KBH","KD","KFY","KKR","KMI","KNTK","KRC","L","LANC",
+    "LB","LCII","LDOS","LH","LHX","LKQ","LNC","LNT","LPX","LSTR",
+    "LUV","LVS","LXP","LYB","M","MAR","MAS","MAT","MCK","MCO",
+    "MHK","MHO","MKSI","MMSI","MMS","MKC","MLM","MMC","MMM","MO",
+    "MOH","MOG.A","MPW","MPC","MSI","MSTR","MTB","MTD","MTH","MTSI",
+    "MUR","NABL","NCLH","NDAQ","NEU","NFG","NGVT","NI","NJR","NKE",
+    "NMIH","NNN","NOC","NOG","NSA","NSC","NUE","NVR","NVT","NWE",
+    "NWSA","NWS","NXPI","NXST","NYT","O","OFG","OGE","OGS","OHI",
+    "OKE","OLN","OMC","OMF","ONB","ORA","ORC","ORLY","OSK","OTIS",
+    "PATK","PAYC","PB","PCH","PDCO","PEB","PEG","PENN","PFG","PGR",
+    "PII","PIPR","PJT","PK","PKG","PKI","PLXS","PLUS","PNFP","POOL",
+    "PODD","PPG","PPL","PRGO","PRIM","PRKS","PRK","PRU","PSA","PSO",
+    "PUMP","PVH","PYPL","RBC","RCUS","RDN","REGN","REG","REZI","RF",
+    "RGLD","RHI","RHP","RITM","RJF","RL","RLI","RMD","RNR","ROCK",
+    "ROK","ROL","RPM","ROST","RS","RXO","RYAN","SBAC","SBRA","SCHO",
+    "SEM","SHW","SIGI","SLGN","SLB","SM","SMPL","SNX","SO","SPB",
+    "SPG","SPSC","STT","STRA","SUM","SWK","SWX","SXC","SXI","SYF",
+    "TALO","TBI","TDOC","TECH","TDY","TFC","TGT","TKR","TOL","TPH",
+    "TPR","TRN","TRGP","TRIP","TRMB","TRMK","TREX","TROW","TT","TTMI",
+    "TWNK","UAL","UDR","UHS","UNF","UNVR","UNUM","UPS","URBN","URI",
+    "USB","VFC","VICI","VLO","VLY","VMC","VNO","VOYA","VRSK","VTRS",
+    "VVV","WAB","WAT","WBA","WBD","WD","WEC","WEN","WERN","WH",
+    "WHD","WHR","WINA","WM","WMB","WOLF","WRB","WY","WYNN","XEL",
+    "YETI","ZTS","ZWS","ZBRA","AAL","AES","BROS","AEIS","AHR","NSSC",
+    "BMY","CRWD","VRTX","SBUX","CME","SNPS","DUK","FDX","ICE","NOC",
+}
+
 TX_KEYWORDS = [
     "Texas", "Austin", "Houston", "Dallas", "San Antonio",
     "Fort Worth", "Midland", "Odessa", "Permian", "Eagle Ford",
@@ -89,18 +145,38 @@ def is_texas(text):
 
 
 def parse_rss(raw, source_label, prospect_type, texas=False):
-    """Parse RSS XML into prospect dicts."""
+    """Parse RSS XML into prospect dicts. Extracts real URLs from Google News redirects."""
     results = []
     try:
         root = ET.fromstring(raw)
         for item in root.iter("item"):
             title   = item.findtext("title", "") or ""
-            link    = item.findtext("link", "") or ""
             pubdate = item.findtext("pubDate", "") or ""
             desc    = item.findtext("description", "") or ""
-            entity  = clean(title, 150)
-            detail  = clean(desc, 150) or entity
-            tx      = texas or is_texas(entity + detail)
+
+            # Extract real URL — Google News wraps in redirect, use guid or link
+            link = ""
+            guid = item.findtext("guid", "") or ""
+            raw_link = item.findtext("link", "") or ""
+
+            # Google News: real URL often in source tag or extractable from guid
+            source_tag = item.find("source")
+            if source_tag is not None:
+                source_url = source_tag.get("url", "")
+                if source_url and not "google.com" in source_url:
+                    link = source_url
+
+            # If not found, try guid (sometimes contains real URL)
+            if not link and guid and not "google.com" in guid and guid.startswith("http"):
+                link = guid
+
+            # Fall back to raw link
+            if not link:
+                link = raw_link
+
+            entity = clean(title, 150)
+            detail = clean(desc, 150) or entity
+            tx     = texas or is_texas(entity + detail)
             if entity:
                 results.append({
                     "source": source_label,
@@ -114,6 +190,7 @@ def parse_rss(raw, source_label, prospect_type, texas=False):
     except Exception as e:
         log(f"RSS parse error ({source_label}): {e}", "⚠")
     return results
+
 
 
 # ── 1. SEC EDGAR ──────────────────────────────────────────────────────────────
@@ -228,14 +305,185 @@ def fetch_sec_formd():
     return results
 
 
+
+# ── 1B. SEC FORM 4 — RSU/OPTION GRANTS (transaction code A) ──────────────────
+
+def fetch_form4_grants():
+    """
+    Form 4 transaction code A = new RSU or option award to an insider.
+    Filtered to TARGET_TICKERS universe (S&P 400 + S&P 500 ex-top-100).
+    This catches executives at the MOMENT equity is granted — before it vests.
+    """
+    log("Fetching SEC Form 4 grants (code A — new awards)...", "📋")
+    results = []
+    seen    = set()
+
+    # Query Form 4 with transaction code A for recent period
+    url = (
+        "https://efts.sec.gov/LATEST/search-index?q=%22transaction+code%22+%22A%22"
+        f"&dateRange=custom&startdt={CUTOFF.strftime('%Y-%m-%d')}"
+        f"&enddt={TODAY.strftime('%Y-%m-%d')}&forms=4"
+    )
+    raw = fetch(url)
+    if not raw:
+        return []
+
+    try:
+        hits = json.loads(raw).get("hits", {}).get("hits", [])
+        for h in hits[:50]:
+            s        = h.get("_source", {})
+            entity   = clean(s.get("entity_name", ""), 80)
+            ticker   = s.get("ticker", "") or ""
+            date     = s.get("file_date", "")
+            filer    = clean(s.get("display_names", ["Unknown"])[0] if s.get("display_names") else "Unknown", 80)
+            key      = re.sub(r"\W+", "", (entity + filer).lower())[:50]
+
+            # Only keep if company is in our target universe
+            if ticker.upper() not in TARGET_TICKERS and entity not in TARGET_TICKERS:
+                continue
+            if key in seen:
+                continue
+            seen.add(key)
+
+            tx = is_texas(entity + filer)
+            results.append({
+                "source": "SEC Form 4 — Grant",
+                "type":   "equity_grant",
+                "entity": f"{filer} at {entity}" if filer != "Unknown" else entity,
+                "date":   date,
+                "detail": (f"New RSU or option grant to {filer} at {entity} ({ticker}). "
+                           f"Transaction code A — award at time of grant, not sale. "
+                           f"Executive has new unvested equity accumulating now."),
+                "url":    f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company={urllib.parse.quote(entity)}&type=4&dateb=&owner=include&count=10",
+                "texas":  tx,
+            })
+    except Exception as e:
+        log(f"Form 4 grants parse error: {e}", "⚠")
+
+    log(f"Form 4 grants: {len(results)} new equity awards", "✓")
+    return results
+
+
+# ── 1C. SEC SCHEDULE 13G/13D — LARGE CONCENTRATED HOLDERS ────────────────────
+
+def fetch_schedule_13g():
+    """
+    13G = passive holder > 5% of a company.
+    13D = active holder > 5% (often activist).
+    These people have concentrated positions and likely need diversification help.
+    """
+    log("Fetching SEC Schedule 13G/13D (large holders)...", "📋")
+    url = (
+        "https://efts.sec.gov/LATEST/search-index?q=%22Schedule+13G%22+OR+%22Schedule+13D%22"
+        f"&dateRange=custom&startdt={CUTOFF.strftime('%Y-%m-%d')}"
+        f"&enddt={TODAY.strftime('%Y-%m-%d')}&forms=SC+13G,SC+13D"
+    )
+    raw = fetch(url)
+    if not raw:
+        return []
+    try:
+        hits    = json.loads(raw).get("hits", {}).get("hits", [])
+        results = []
+        seen    = set()
+        for h in hits[:25]:
+            s      = h.get("_source", {})
+            entity = clean(s.get("entity_name", ""), 80)
+            date   = s.get("file_date", "")
+            filer  = clean(s.get("display_names", ["Unknown"])[0] if s.get("display_names") else "Unknown", 80)
+            key    = re.sub(r"\W+", "", (entity+filer).lower())[:50]
+            if key in seen:
+                continue
+            seen.add(key)
+            tx = is_texas(entity + filer)
+            results.append({
+                "source": "SEC 13G/13D",
+                "type":   "concentrated_holder",
+                "entity": f"{filer} — large stake in {entity}" if filer != "Unknown" else entity,
+                "date":   date,
+                "detail": (f"{filer} holds >5% of {entity}. "
+                           f"Concentrated position — likely needs diversification planning. "
+                           f"Individual or family office filer."),
+                "url":    f"https://efts.sec.gov/LATEST/search-index?forms=SC+13G,SC+13D",
+                "texas":  tx,
+            })
+        log(f"Schedule 13G/13D: {len(results)} large holders", "✓")
+        return results
+    except Exception as e:
+        log(f"13G parse error: {e}", "⚠")
+        return []
+
+
+# ── 1D. IRS 990 — PHILANTHROPIC SIGNALS (NATIONWIDE) ─────────────────────────
+
+def fetch_990_nationwide():
+    """
+    Nationwide IRS 990 search — donors $50K-$500K annually.
+    Not just Texas. These people are already thinking about money intentionally.
+    """
+    log("Fetching IRS 990 nationwide philanthropy signals...", "📋")
+    searches = [
+        "family foundation",     "private foundation",
+        "Texas foundation",      "Austin foundation",
+        "Houston foundation",    "Dallas foundation",
+        "New York foundation",   "Chicago foundation",
+        "energy foundation",     "technology foundation",
+    ]
+    results = []
+    seen    = set()
+    for term in searches:
+        url = (
+            "https://projects.propublica.org/nonprofits/api/v2/search.json"
+            f"?q={urllib.parse.quote(term)}"
+        )
+        raw = fetch(url)
+        if not raw:
+            time.sleep(0.3)
+            continue
+        try:
+            orgs = json.loads(raw).get("organizations", [])
+            for org in orgs[:5]:
+                revenue = org.get("totrevenue", 0) or 0
+                assets  = org.get("totassests", 0) or 0
+                # Target donors in $50K-$5M revenue range — not too small, not named-gift large
+                if revenue < 50_000 or revenue > 5_000_000:
+                    continue
+                name = clean(org.get("name", "Unknown"))
+                key  = re.sub(r"\W+", "", name.lower())[:40]
+                if key in seen:
+                    continue
+                seen.add(key)
+                city  = org.get("city", "")
+                state = org.get("state", "")
+                tx    = state == "TX" or is_texas(name + city)
+                results.append({
+                    "source": "IRS 990 / ProPublica",
+                    "type":   "philanthropy",
+                    "entity": name,
+                    "date":   str(org.get("tax_prd_yr", "")),
+                    "detail": (f"{name} — {city}, {state}. "
+                               f"Annual revenue ${revenue:,}. Assets ${assets:,}. "
+                               f"Active donor — philanthropic mindset signals wealth and intentionality."),
+                    "url":    f"https://projects.propublica.org/nonprofits/organizations/{org.get('ein','')}",
+                    "texas":  tx,
+                })
+        except Exception as e:
+            log(f"990 parse error ({term}): {e}", "⚠")
+        time.sleep(0.3)
+    log(f"IRS 990 nationwide: {len(results)} philanthropic signals", "✓")
+    return results
+
 # ── 2. GOOGLE NEWS RSS ────────────────────────────────────────────────────────
+
 
 def gnews(query, label, ptype, texas=False):
     """Single Google News RSS query with rate-limit sleep."""
-    time.sleep(0.5)  # respectful rate limiting
-    encoded = urllib.parse.quote(query)
-    url     = f"https://news.google.com/rss/search?q={encoded}&hl=en-US&gl=US&ceid=US:en"
-    raw     = fetch(url)
+    time.sleep(0.5)
+    # Add date filter so we never get results older than 90 days
+    after_date = CUTOFF.strftime("%Y-%m-%d")
+    full_query  = f"{query} after:{after_date}"
+    encoded     = urllib.parse.quote(full_query)
+    url         = f"https://news.google.com/rss/search?q={encoded}&hl=en-US&gl=US&ceid=US:en"
+    raw         = fetch(url)
     if not raw:
         return []
     items = parse_rss(raw, f"Google News — {label}", ptype, texas)[:8]
@@ -435,15 +683,17 @@ def score_batch(batch, batch_num):
         f"You are a senior analyst for a Texas-based financial advisor targeting UHNW individuals ($2M+ wealth events).\n"
         f"Today: {TODAY.strftime('%B %d, %Y')}\n\n"
         "TARGET PROFILES (ranked by value):\n"
-        "1. Big law equity partners — capital account payout, often unadvised\n"
-        "2. PE/hedge fund professionals — carry, deferred comp, new fund launch\n"
-        "3. Corporate C-suite executives — deferred comp, LTIP, RSUs on departure\n"
-        "4. Financial professionals leaving Goldman, Blackstone, KKR, etc\n"
-        "5. Texas energy/mineral rights sellers — Permian, Eagle Ford\n"
-        "6. Texas tech founders post-acquisition\n"
-        "7. Texas ranch/ag land sellers — first-time liquid\n"
-        "8. Medical group sale participants\n"
-        "9. Texas nonprofit founders/large donors\n\n"
+        "1. SEC Form 4 code A — executive receiving new RSU/option grant at mid-cap company. Wealth accumulating now, likely unadvised.\n"
+        "2. SEC 13G/13D — individual or family with >5% concentrated stake. Diversification conversation.\n"
+        "3. Big law equity partners — capital account payout, often unadvised\n"
+        "4. PE/hedge fund professionals — carry, deferred comp, new fund launch\n"
+        "5. Corporate C-suite executives — deferred comp, LTIP, RSUs on departure\n"
+        "6. Financial professionals leaving Goldman, Blackstone, KKR, etc\n"
+        "7. IRS 990 donor $50K-$500K annually — philanthropic mindset, already wealth-aware\n"
+        "8. Texas energy/mineral rights sellers — Permian, Eagle Ford\n"
+        "9. Texas tech founders post-acquisition\n"
+        "10. Texas ranch/ag land sellers — first-time liquid\n"
+        "11. Medical group sale participants\n\n"
         "SCORING:\n"
         "HIGH = clear individual $2M+ event, actionable now\n"
         "MEDIUM = strong signal, incomplete info\n"
@@ -530,15 +780,25 @@ def score_with_claude(prospects):
         time.sleep(1.5)  # rate limit between batches
 
     rank_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2, "SKIP": 3}
-    filtered   = [p for p in scored_all if p.get("rank") not in ("SKIP", None)]
+    filtered   = [p for p in scored_all if p.get("rank") not in ("SKIP", None) and not (p.get("rank") == "LOW" and "skip" in p.get("action","").lower())]
+
+    # Post-scoring dedup — same entity scored from two sources should appear once
+    seen_entities = set()
+    deduped = []
+    for p in filtered:
+        key = re.sub(r"\W+", "", p.get("entity", "").lower())[:40]
+        if key and key not in seen_entities:
+            seen_entities.add(key)
+            deduped.append(p)
+
     sorted_out = sorted(
-        filtered,
+        deduped,
         key=lambda p: (
             rank_order.get(p.get("rank", "LOW"), 2),
             0 if p.get("texas") else 1,
         ),
     )
-    log(f"Scoring complete: {len(sorted_out)} actionable prospects", "✓")
+    log(f"Scoring complete: {len(sorted_out)} actionable prospects (deduped from {len(filtered)})", "✓")
     return sorted_out
 
 
@@ -558,6 +818,24 @@ PROFILE_LABELS = {
 }
 RANK_COLORS = {"HIGH": "#C0392B", "MEDIUM": "#E67E22", "LOW": "#95A5A6"}
 
+
+
+def approve_url(p):
+    """Build a Pipedream webhook URL with prospect data encoded as query params."""
+    params = urllib.parse.urlencode({
+        "name":    p.get("entity", "")[:100],
+        "source":  p.get("source", ""),
+        "type":    p.get("profile_type", p.get("type", "")),
+        "rank":    p.get("rank", ""),
+        "wealth":  p.get("estimated_wealth_event", ""),
+        "why":     p.get("why_it_matters", "")[:200],
+        "action":  p.get("action", "")[:100],
+        "url":     p.get("url", ""),
+        "texas":   str(p.get("texas", False)),
+        "date":    p.get("date", ""),
+        "to":      EMAIL_TO,
+    })
+    return f"{PIPEDREAM_URL}?{params}"
 
 def prospect_card(p):
     color   = RANK_COLORS.get(p.get("rank", "LOW"), "#ccc")
@@ -667,6 +945,7 @@ def send_digest(scored):
         "content": [{"type": "text/html", "value": html}],
     }).encode()
 
+    log(f"Connecting to SendGrid (key: {SENDGRID_API_KEY[:8]}...)...", "📧")
     req = urllib.request.Request(
         "https://api.sendgrid.com/v3/mail/send",
         data=payload,
@@ -676,11 +955,18 @@ def send_digest(scored):
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with urllib.request.urlopen(req, timeout=15) as r:
             log(f"Digest sent → {EMAIL_TO} (HTTP {r.status})", "✉️")
     except urllib.error.HTTPError as e:
         body = e.read().decode()[:300]
-        log(f"SendGrid error {e.code}: {body}", "⚠")
+        log(f"SendGrid HTTP error {e.code}: {body}", "⚠")
+        raise
+    except urllib.error.URLError as e:
+        log(f"SendGrid connection error: {e.reason}", "⚠")
+        log("Check that SENDGRID_API_KEY is set correctly in Railway variables", "⚠")
+        raise
+    except Exception as e:
+        log(f"SendGrid unexpected error: {type(e).__name__}: {e}", "⚠")
         raise
 
 
